@@ -23,6 +23,7 @@ The CLI also accepts `--api-key`, but environment variables are safer for everyd
 go run ./cmd/gotrain stations oak
 go run ./cmd/gotrain stations --json
 go run ./cmd/gotrain departures UN
+go run ./cmd/gotrain line-stops LW W
 go run ./cmd/gotrain trains --line LW
 go run ./cmd/gotrain trains --line LW --json
 go run ./cmd/gotrain train 1031 --json
@@ -65,6 +66,7 @@ or MCP/agent adapter can reuse the same packages without scraping terminal outpu
 GET /healthz
 GET /stations?q=union
 GET /departures/UN
+GET /line-stops/LW/W
 GET /trains?line=LW
 GET /trains/{trip}
 GET /alerts?line=LW

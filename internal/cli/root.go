@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/noah/go-train-cli/internal/tui"
 	"github.com/noah/go-train-cli/pkg/config"
@@ -33,12 +34,42 @@ func NewRootCommand() *cobra.Command {
 
 	root.AddCommand(stationsCommand(opts))
 	root.AddCommand(departuresCommand(opts))
+	root.AddCommand(lineStopsCommand(opts))
 	root.AddCommand(trainsCommand(opts))
 	root.AddCommand(trainCommand(opts))
 	root.AddCommand(alertsCommand(opts))
 	root.AddCommand(serveCommand(opts))
 	root.AddCommand(tuiCommand(opts))
 	return root
+}
+
+func lineStopsCommand(opts *options) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "line-stops <line> <direction>",
+		Short: "List the ordered stop topology for a GO train line",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			snap, err := newService(opts).LineStops(cmd.Context(), args[0], args[1], time.Now())
+			if err != nil {
+				return err
+			}
+			if opts.json {
+				return output.JSON(cmd.OutOrStdout(), snap)
+			}
+			rows := make([][]string, 0, len(snap.Data))
+			for _, stop := range snap.Data {
+				rows = append(rows, []string{
+					strconv.Itoa(stop.Order),
+					stop.Code,
+					stop.Name,
+					stop.Type,
+				})
+			}
+			output.Rows(cmd.OutOrStdout(), []string{"ORDER", "CODE", "NAME", "TYPE"}, rows)
+			return nil
+		},
+	}
+	return cmd
 }
 
 func newService(opts *options) *transit.Service {
@@ -210,6 +241,10 @@ func serveCommand(opts *options) *cobra.Command {
 			})
 			mux.HandleFunc("GET /departures/{station}", func(w http.ResponseWriter, r *http.Request) {
 				snap, err := svc.Departures(r.Context(), r.PathValue("station"))
+				writeHTTP(w, snap, err)
+			})
+			mux.HandleFunc("GET /line-stops/{line}/{direction}", func(w http.ResponseWriter, r *http.Request) {
+				snap, err := svc.LineStops(r.Context(), r.PathValue("line"), r.PathValue("direction"), time.Now())
 				writeHTTP(w, snap, err)
 			})
 			mux.HandleFunc("GET /trains", func(w http.ResponseWriter, r *http.Request) {

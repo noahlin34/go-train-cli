@@ -41,6 +41,14 @@ type TrainTrip struct {
 	ModifiedDate  string   `json:"ModifiedDate"`
 }
 
+type LineStop struct {
+	Code    string `json:"Code"`
+	Order   int    `json:"Order"`
+	Name    string `json:"Name"`
+	Type    string `json:"Type"`
+	IsMajor bool   `json:"IsMajor"`
+}
+
 type AlertMessage struct {
 	Code           string    `json:"Code"`
 	ParentCode     *string   `json:"ParentCode"`

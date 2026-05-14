@@ -65,6 +65,14 @@ type Alert struct {
 	TripIDs  []string `json:"trip_ids"`
 }
 
+type LineStop struct {
+	Code    string `json:"code"`
+	Order   int    `json:"order"`
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	IsMajor bool   `json:"is_major"`
+}
+
 func (s *Service) Stations(ctx context.Context, query string, trainOnly bool) (Snapshot[[]Station], error) {
 	stops, meta, err := s.client.Stops(ctx)
 	if err != nil {
@@ -166,6 +174,36 @@ func (s *Service) Alerts(ctx context.Context, line string) (Snapshot[[]Alert], e
 		GeneratedAt: nowISO(),
 		SourceTime:  meta.TimeStamp,
 		Data:        alerts,
+	}, nil
+}
+
+func (s *Service) LineStops(ctx context.Context, line, direction string, day time.Time) (Snapshot[[]LineStop], error) {
+	line = strings.ToUpper(strings.TrimSpace(line))
+	direction = strings.ToUpper(strings.TrimSpace(direction))
+	if day.IsZero() {
+		day = time.Now()
+	}
+	raw, meta, err := s.client.LineStops(ctx, day.Format("20060102"), line, direction)
+	if err != nil {
+		return Snapshot[[]LineStop]{}, err
+	}
+	stops := make([]LineStop, 0, len(raw))
+	for _, stop := range raw {
+		stops = append(stops, LineStop{
+			Code:    strings.TrimSpace(stop.Code),
+			Order:   stop.Order,
+			Name:    stop.Name,
+			Type:    stop.Type,
+			IsMajor: stop.IsMajor,
+		})
+	}
+	sort.Slice(stops, func(i, j int) bool {
+		return stops[i].Order < stops[j].Order
+	})
+	return Snapshot[[]LineStop]{
+		GeneratedAt: nowISO(),
+		SourceTime:  meta.TimeStamp,
+		Data:        stops,
 	}, nil
 }
 

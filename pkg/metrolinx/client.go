@@ -123,3 +123,30 @@ func (c *Client) ServiceAlerts(ctx context.Context) ([]AlertMessage, Metadata, e
 	}
 	return messages, resp.Metadata, requireOK(resp.Metadata)
 }
+
+func (c *Client) LineStops(ctx context.Context, date, lineCode, direction string) ([]LineStop, Metadata, error) {
+	var resp struct {
+		Metadata Metadata `json:"Metadata"`
+		Lines    struct {
+			Code      string          `json:"Code"`
+			Direction string          `json:"Direction"`
+			Display   string          `json:"Display"`
+			Stop      json.RawMessage `json:"Stop"`
+		} `json:"Lines"`
+	}
+	path := fmt.Sprintf(
+		"api/V1/Schedule/Line/Stop/%s/%s/%s",
+		url.PathEscape(date),
+		url.PathEscape(strings.ToUpper(lineCode)),
+		url.PathEscape(strings.ToUpper(direction)),
+	)
+	err := c.Get(ctx, path, &resp)
+	if err != nil {
+		return nil, resp.Metadata, err
+	}
+	stops, err := oneOrMany[LineStop](resp.Lines.Stop)
+	if err != nil {
+		return nil, resp.Metadata, err
+	}
+	return stops, resp.Metadata, requireOK(resp.Metadata)
+}
