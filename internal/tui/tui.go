@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/noah/go-train-cli/pkg/transit"
@@ -20,6 +21,8 @@ type model struct {
 	trains    []transit.TrainPosition
 	alerts    []transit.Alert
 	topology  map[string][]transit.LineStop
+	viewport  viewport.Model
+	ready     bool
 	err       error
 	blink     bool
 	loading   bool
@@ -63,6 +66,22 @@ func (m model) Init() tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		headerHeight := lipgloss.Height(m.headerView())
+		height := msg.Height - headerHeight
+		if height < 1 {
+			height = 1
+		}
+		if !m.ready {
+			m.viewport = viewport.New(msg.Width, height)
+			m.viewport.YPosition = headerHeight
+			m.ready = true
+		} else {
+			m.viewport.Width = msg.Width
+			m.viewport.Height = height
+		}
+		m.viewport.SetContent(m.bodyView())
+		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c", "esc":
@@ -103,6 +122,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.loading = true
 			return m, m.fetch()
 		}
+		var cmd tea.Cmd
+		m.viewport, cmd = m.viewport.Update(msg)
+		return m, cmd
 	case snapshotMsg:
 		m.loading = false
 		m.err = msg.err
@@ -112,9 +134,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.topology = msg.topology
 			m.updatedAt = time.Now()
 		}
+		m.viewport.SetContent(m.bodyView())
 		return m, nil
 	case tickMsg:
 		m.blink = !m.blink
+		m.viewport.SetContent(m.bodyView())
 		cmds := []tea.Cmd{tick()}
 		if time.Since(m.updatedAt) >= m.refresh {
 			m.loading = true
@@ -126,14 +150,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
+	if !m.ready {
+		return m.headerView() + "\n\n" + m.bodyView()
+	}
+	return m.headerView() + "\n" + m.viewport.View()
+}
+
+func (m model) headerView() string {
 	var b strings.Builder
 	lineName := m.line
 	if lineName == "" {
 		lineName = "ALL"
 	}
 	fmt.Fprintf(&b, "%s\n", titleStyle.Render("gotrain live"))
-	fmt.Fprintf(&b, "%s  refresh %s  keys: r refresh, 1 LW, 2 LE, 3 KI, 4 BR, 5 ST, 6 RH, 7 MI, l all, q quit\n\n",
+	fmt.Fprintf(&b, "%s  refresh %s  scroll ↑/↓ pgup/pgdn home/end  keys: r refresh, 1 LW, 2 LE, 3 KI, 4 BR, 5 ST, 6 RH, 7 MI, l all, q quit",
 		mutedStyle.Render("line "+lineName), m.refresh)
+	return b.String()
+}
+
+func (m model) bodyView() string {
+	var b strings.Builder
 	if m.err != nil {
 		fmt.Fprintf(&b, "%s\n\n", alertStyle.Render(m.err.Error()))
 	}

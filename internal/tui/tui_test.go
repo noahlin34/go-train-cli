@@ -31,3 +31,31 @@ func TestRenderFullTrackUsesOrderedStops(t *testing.T) {
 		t.Fatalf("expected track to include train dot: %q", track)
 	}
 }
+
+func TestViewSplitsHeaderAndScrollableBody(t *testing.T) {
+	m := model{
+		line:    "LW",
+		refresh: 20,
+		alerts: []transit.Alert{{
+			Category: "Service Disruption",
+			Subject:  "Track work",
+			Lines:    []string{"LW"},
+		}},
+		trains: []transit.TrainPosition{{
+			Line:          "LW",
+			TripNumber:    "1234",
+			Display:       "LW - Aldershot GO",
+			PreviousStop:  "UN",
+			NextStop:      "EX",
+			PositionLabel: "between UN and EX",
+		}},
+	}
+
+	if !strings.Contains(m.headerView(), "scroll") {
+		t.Fatal("expected header to expose scroll controls")
+	}
+	body := m.bodyView()
+	if !strings.Contains(body, "Active alerts") || !strings.Contains(body, "Live trains") {
+		t.Fatalf("expected body to include alerts and trains: %q", body)
+	}
+}
