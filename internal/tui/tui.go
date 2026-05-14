@@ -255,7 +255,7 @@ func renderFullTrack(train transit.TrainPosition, stops []transit.LineStop, blin
 	var b strings.Builder
 	for i, stop := range stops {
 		if i > 0 {
-			fmt.Fprint(&b, lineStyle.Render("━"))
+			fmt.Fprint(&b, lineStyle.Render("━━"))
 		}
 		if atIndex == i {
 			fmt.Fprint(&b, dotStyle.Render(dot))
@@ -263,7 +263,7 @@ func renderFullTrack(train transit.TrainPosition, stops []transit.LineStop, blin
 			fmt.Fprint(&b, mutedStyle.Render(stop.Code))
 		}
 		if atIndex == -1 && shouldInsertBetweenDot(i, prevIndex, nextIndex) {
-			fmt.Fprint(&b, lineStyle.Render("━"))
+			fmt.Fprint(&b, lineStyle.Render("━━"))
 			fmt.Fprint(&b, dotStyle.Render(dot))
 		}
 	}
