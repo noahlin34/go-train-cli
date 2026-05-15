@@ -201,6 +201,9 @@ func (m model) bodyView() string {
 	for _, train := range m.trains {
 		fmt.Fprintf(&b, "%s  %s  %s  %s\n", titleStyle.Render(train.Line), train.TripNumber, train.Display, delayText(train.DelaySeconds))
 		fmt.Fprintf(&b, "%s\n", m.renderTrainTrack(train))
+		if status := m.trainTimingStatus(train); status != "" {
+			fmt.Fprintf(&b, "%s\n", lineStyle.Render(status))
+		}
 		fmt.Fprintf(&b, "%s\n\n", mutedStyle.Render(train.PositionLabel+" | refreshed "+refreshedAgo(m.updatedAt, time.Now())))
 	}
 	return b.String()
@@ -211,6 +214,10 @@ func (m model) renderTrainTrack(train transit.TrainPosition) string {
 		return renderTripTrack(train, tripStops, m.blink, m.updatedAt)
 	}
 	return renderTrack(train, m.topology[topologyKey(train.Line, train.Direction)], m.blink)
+}
+
+func (m model) trainTimingStatus(train transit.TrainPosition) string {
+	return trainTimingStatus(train, m.trips[train.TripNumber])
 }
 
 func (m model) fetch() tea.Cmd {
@@ -387,6 +394,34 @@ func publicStopTime(stop transit.TripStop, now time.Time) (time.Time, bool) {
 		}
 	}
 	return time.Time{}, false
+}
+
+func trainTimingStatus(train transit.TrainPosition, stops []transit.TripStop) string {
+	if len(stops) == 0 {
+		return ""
+	}
+	if train.AtStation != nil && strings.TrimSpace(*train.AtStation) != "" {
+		stop, ok := tripStopByCode(stops, *train.AtStation)
+		if !ok || strings.TrimSpace(stop.DepartureComputed) == "" {
+			return ""
+		}
+		return fmt.Sprintf("departs %s at %s", stop.Code, strings.TrimSpace(stop.DepartureComputed))
+	}
+	stop, ok := tripStopByCode(stops, train.NextStop)
+	if !ok || strings.TrimSpace(stop.ArrivalComputed) == "" {
+		return ""
+	}
+	return fmt.Sprintf("arrives %s at %s", stop.Code, strings.TrimSpace(stop.ArrivalComputed))
+}
+
+func tripStopByCode(stops []transit.TripStop, code string) (transit.TripStop, bool) {
+	code = strings.TrimSpace(code)
+	for _, stop := range stops {
+		if strings.EqualFold(stop.Code, code) {
+			return stop, true
+		}
+	}
+	return transit.TripStop{}, false
 }
 
 func parseClockTime(value string, now time.Time) (time.Time, bool) {

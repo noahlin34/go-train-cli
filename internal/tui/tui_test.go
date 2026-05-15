@@ -137,6 +137,12 @@ func TestViewSplitsHeaderAndScrollableBody(t *testing.T) {
 			NextStop:      "EX",
 			PositionLabel: "between UN and EX",
 		}},
+		trips: map[string][]transit.TripStop{
+			"1234": {
+				{Code: "UN", Order: 1, DepartureComputed: "12:10"},
+				{Code: "EX", Order: 2, ArrivalComputed: "12:18"},
+			},
+		},
 	}
 
 	if !strings.Contains(m.headerView(), "scroll") {
@@ -145,6 +151,9 @@ func TestViewSplitsHeaderAndScrollableBody(t *testing.T) {
 	body := m.bodyView()
 	if !strings.Contains(body, "Active alerts") || !strings.Contains(body, "Live trains") {
 		t.Fatalf("expected body to include alerts and trains: %q", body)
+	}
+	if !strings.Contains(body, "arrives EX at 12:18") {
+		t.Fatalf("expected body to include next station timing: %q", body)
 	}
 }
 
@@ -176,5 +185,45 @@ func TestDelayTextShowsDelayedTrainsInRed(t *testing.T) {
 func TestDelayTextPluralizesOneMinute(t *testing.T) {
 	if got := delayText(-30); !strings.Contains(got, "delayed by 1 minute") {
 		t.Fatalf("expected singular delayed label, got %q", got)
+	}
+}
+
+func TestTrainTimingStatusShowsNextStationArrival(t *testing.T) {
+	got := trainTimingStatus(transit.TrainPosition{
+		NextStop: "EX",
+	}, []transit.TripStop{
+		{Code: "UN", Order: 1, DepartureComputed: "12:10"},
+		{Code: "EX", Order: 2, ArrivalComputed: "12:18"},
+	})
+
+	if got != "arrives EX at 12:18" {
+		t.Fatalf("expected next station arrival, got %q", got)
+	}
+}
+
+func TestTrainTimingStatusShowsCurrentStationDeparture(t *testing.T) {
+	at := "UN"
+	got := trainTimingStatus(transit.TrainPosition{
+		AtStation: &at,
+		NextStop:  "EX",
+	}, []transit.TripStop{
+		{Code: "UN", Order: 1, DepartureComputed: "12:10"},
+		{Code: "EX", Order: 2, ArrivalComputed: "12:18"},
+	})
+
+	if got != "departs UN at 12:10" {
+		t.Fatalf("expected current station departure, got %q", got)
+	}
+}
+
+func TestTrainTimingStatusRequiresComputedEstimate(t *testing.T) {
+	got := trainTimingStatus(transit.TrainPosition{
+		NextStop: "EX",
+	}, []transit.TripStop{
+		{Code: "EX", Order: 2, ArrivalScheduled: "12:18"},
+	})
+
+	if got != "" {
+		t.Fatalf("expected no status without API computed estimate, got %q", got)
 	}
 }
