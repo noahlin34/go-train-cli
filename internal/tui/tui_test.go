@@ -194,7 +194,7 @@ func TestTrainTimingStatusShowsNextStationArrival(t *testing.T) {
 	}, []transit.TripStop{
 		{Code: "UN", Order: 1, DepartureComputed: "12:10"},
 		{Code: "EX", Order: 2, ArrivalComputed: "12:18"},
-	})
+	}, time.Time{})
 
 	if got != "arrives EX at 12:18" {
 		t.Fatalf("expected next station arrival, got %q", got)
@@ -209,7 +209,7 @@ func TestTrainTimingStatusShowsCurrentStationDeparture(t *testing.T) {
 	}, []transit.TripStop{
 		{Code: "UN", Order: 1, DepartureComputed: "12:10"},
 		{Code: "EX", Order: 2, ArrivalComputed: "12:18"},
-	})
+	}, time.Time{})
 
 	if got != "departs UN at 12:10" {
 		t.Fatalf("expected current station departure, got %q", got)
@@ -221,7 +221,7 @@ func TestTrainTimingStatusFallsBackToScheduledArrival(t *testing.T) {
 		NextStop: "EX",
 	}, []transit.TripStop{
 		{Code: "EX", Order: 2, ArrivalScheduled: "12:18"},
-	})
+	}, time.Time{})
 
 	if got != "scheduled to arrive EX at 12:18" {
 		t.Fatalf("expected scheduled arrival fallback, got %q", got)
@@ -234,9 +234,42 @@ func TestTrainTimingStatusFallsBackToScheduledDeparture(t *testing.T) {
 		AtStation: &at,
 	}, []transit.TripStop{
 		{Code: "UN", Order: 1, DepartureScheduled: "12:10"},
-	})
+	}, time.Time{})
 
 	if got != "scheduled to depart UN at 12:10" {
 		t.Fatalf("expected scheduled departure fallback, got %q", got)
+	}
+}
+
+func TestTrainTimingStatusUsesPublicTripStopWhenTelemetryStopIsPrivate(t *testing.T) {
+	now := time.Date(2026, 5, 14, 22, 45, 0, 0, time.Local)
+	got := trainTimingStatus(transit.TrainPosition{
+		PreviousStop: "BAYV",
+		NextStop:     "HAMJ",
+	}, []transit.TripStop{
+		{Code: "BU", Order: 1, DepartureComputed: "22:20"},
+		{Code: "AL", Order: 2, DepartureComputed: "22:40"},
+		{Code: "WR", Order: 3, ArrivalComputed: "22:50"},
+	}, now)
+
+	if got != "arrives WR at 22:50" {
+		t.Fatalf("expected public next stop arrival, got %q", got)
+	}
+}
+
+func TestTrainPositionLabelUsesPublicTripStopsWhenTelemetryStopsArePrivate(t *testing.T) {
+	now := time.Date(2026, 5, 14, 22, 45, 0, 0, time.Local)
+	got := trainPositionLabel(transit.TrainPosition{
+		PreviousStop:  "BAYV",
+		NextStop:      "HAMJ",
+		PositionLabel: "between BAYV and HAMJ",
+	}, []transit.TripStop{
+		{Code: "BU", Order: 1, DepartureComputed: "22:20"},
+		{Code: "AL", Order: 2, DepartureComputed: "22:40"},
+		{Code: "WR", Order: 3, ArrivalComputed: "22:50"},
+	}, now)
+
+	if got != "between AL and WR" {
+		t.Fatalf("expected public position label, got %q", got)
 	}
 }

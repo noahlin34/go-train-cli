@@ -204,7 +204,7 @@ func (m model) bodyView() string {
 		if status := m.trainTimingStatus(train); status != "" {
 			fmt.Fprintf(&b, "%s\n", lineStyle.Render(status))
 		}
-		fmt.Fprintf(&b, "%s\n\n", mutedStyle.Render(train.PositionLabel+" | refreshed "+refreshedAgo(m.updatedAt, time.Now())))
+		fmt.Fprintf(&b, "%s\n\n", mutedStyle.Render(m.trainPositionLabel(train)+" | refreshed "+refreshedAgo(m.updatedAt, time.Now())))
 	}
 	return b.String()
 }
@@ -217,7 +217,11 @@ func (m model) renderTrainTrack(train transit.TrainPosition) string {
 }
 
 func (m model) trainTimingStatus(train transit.TrainPosition) string {
-	return trainTimingStatus(train, m.trips[train.TripNumber])
+	return trainTimingStatus(train, m.trips[train.TripNumber], m.updatedAt)
+}
+
+func (m model) trainPositionLabel(train transit.TrainPosition) string {
+	return trainPositionLabel(train, m.trips[train.TripNumber], m.updatedAt)
 }
 
 func (m model) fetch() tea.Cmd {
@@ -396,7 +400,7 @@ func publicStopTime(stop transit.TripStop, now time.Time) (time.Time, bool) {
 	return time.Time{}, false
 }
 
-func trainTimingStatus(train transit.TrainPosition, stops []transit.TripStop) string {
+func trainTimingStatus(train transit.TrainPosition, stops []transit.TripStop, now time.Time) string {
 	if len(stops) == 0 {
 		return ""
 	}
@@ -405,23 +409,65 @@ func trainTimingStatus(train transit.TrainPosition, stops []transit.TripStop) st
 		if !ok {
 			return ""
 		}
-		if computed := strings.TrimSpace(stop.DepartureComputed); computed != "" {
-			return fmt.Sprintf("departs %s at %s", stop.Code, computed)
-		}
-		if scheduled := strings.TrimSpace(stop.DepartureScheduled); scheduled != "" {
-			return fmt.Sprintf("scheduled to depart %s at %s", stop.Code, scheduled)
-		}
-		return ""
+		return departureStatus(stop)
 	}
 	stop, ok := tripStopByCode(stops, train.NextStop)
 	if !ok {
-		return ""
+		_, right, inferred := tripSegmentByTime(stops, now)
+		if !inferred {
+			return ""
+		}
+		stop, ok = tripStopByCode(stops, right)
+		if !ok {
+			return ""
+		}
 	}
+	return arrivalStatus(stop)
+}
+
+func trainPositionLabel(train transit.TrainPosition, stops []transit.TripStop, now time.Time) string {
+	if len(stops) == 0 {
+		return train.PositionLabel
+	}
+	if train.AtStation != nil && strings.TrimSpace(*train.AtStation) != "" {
+		if stop, ok := tripStopByCode(stops, *train.AtStation); ok {
+			return "at " + stop.Code
+		}
+		return train.PositionLabel
+	}
+	left, right := train.PreviousStop, train.NextStop
+	if _, ok := tripStopByCode(stops, left); !ok {
+		var inferred bool
+		left, right, inferred = tripSegmentByTime(stops, now)
+		if !inferred {
+			return train.PositionLabel
+		}
+	} else if _, ok := tripStopByCode(stops, right); !ok {
+		var inferred bool
+		left, right, inferred = tripSegmentByTime(stops, now)
+		if !inferred {
+			return train.PositionLabel
+		}
+	}
+	return fmt.Sprintf("between %s and %s", left, right)
+}
+
+func arrivalStatus(stop transit.TripStop) string {
 	if computed := strings.TrimSpace(stop.ArrivalComputed); computed != "" {
 		return fmt.Sprintf("arrives %s at %s", stop.Code, computed)
 	}
 	if scheduled := strings.TrimSpace(stop.ArrivalScheduled); scheduled != "" {
 		return fmt.Sprintf("scheduled to arrive %s at %s", stop.Code, scheduled)
+	}
+	return ""
+}
+
+func departureStatus(stop transit.TripStop) string {
+	if computed := strings.TrimSpace(stop.DepartureComputed); computed != "" {
+		return fmt.Sprintf("departs %s at %s", stop.Code, computed)
+	}
+	if scheduled := strings.TrimSpace(stop.DepartureScheduled); scheduled != "" {
+		return fmt.Sprintf("scheduled to depart %s at %s", stop.Code, scheduled)
 	}
 	return ""
 }
