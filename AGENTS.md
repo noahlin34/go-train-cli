@@ -24,6 +24,12 @@ For live API commands, create `.env` with `GO_API_KEY=...` or export `GO_API_KEY
 
 Format Go code with `gofmt -w`. Keep package names short and lowercase (`transit`, `metrolinx`, `output`). Use exported names only for APIs intended outside the package. Prefer small structs with JSON tags for deterministic machine-readable output. Keep CLI presentation code in `internal/cli` or `internal/tui`; do not mix UI formatting into `pkg/transit`.
 
+## Transit Data Display Principles
+
+Treat the Metrolinx API as the source of truth: format, label, and clarify API fields, but do not invent live transit facts that the API does not provide. Some live train payloads include non-public railway position stop codes, such as control points or junctions, in fields like previous/next stop. These codes are useful internally for tracking and mapping, but they are not passenger-facing station codes.
+
+For CLI/TUI output, prefer public station stop codes from scheduled trip or line-stop data. The TUI has helpers to infer the public station segment from trip stops when live telemetry reports private railway position codes. Do not display private railway position codes in user-facing CLI/TUI text when a public station stop code can be resolved; if it cannot be resolved, prefer a conservative fallback over implying a public station position the API did not support.
+
 ## Testing Guidelines
 
 Use Go’s built-in `testing` package. Name tests `TestThingBehavior`, and place them in `*_test.go` files beside the code under test. Prefer unit tests for normalization, filtering, and formatting logic. Live API calls are useful for smoke testing but should not be required for `go test ./...`.
