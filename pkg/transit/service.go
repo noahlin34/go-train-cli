@@ -73,6 +73,16 @@ type LineStop struct {
 	IsMajor bool   `json:"is_major"`
 }
 
+type TripStop struct {
+	Code               string `json:"code"`
+	Order              int    `json:"order"`
+	Status             string `json:"status"`
+	ArrivalScheduled   string `json:"arrival_scheduled,omitempty"`
+	ArrivalComputed    string `json:"arrival_computed,omitempty"`
+	DepartureScheduled string `json:"departure_scheduled,omitempty"`
+	DepartureComputed  string `json:"departure_computed,omitempty"`
+}
+
 func (s *Service) Stations(ctx context.Context, query string, trainOnly bool) (Snapshot[[]Station], error) {
 	stops, meta, err := s.client.Stops(ctx)
 	if err != nil {
@@ -201,6 +211,40 @@ func (s *Service) LineStops(ctx context.Context, line, direction string, day tim
 		return stops[i].Order < stops[j].Order
 	})
 	return Snapshot[[]LineStop]{
+		GeneratedAt: nowISO(),
+		SourceTime:  meta.TimeStamp,
+		Data:        stops,
+	}, nil
+}
+
+func (s *Service) TripStops(ctx context.Context, tripNumber string, day time.Time) (Snapshot[[]TripStop], error) {
+	if day.IsZero() {
+		day = time.Now()
+	}
+	trip, meta, err := s.client.ScheduledTrip(ctx, day.Format("20060102"), tripNumber)
+	if err != nil {
+		return Snapshot[[]TripStop]{}, err
+	}
+	if trip == nil {
+		return Snapshot[[]TripStop]{
+			GeneratedAt: nowISO(),
+			SourceTime:  meta.TimeStamp,
+			Data:        []TripStop{},
+		}, nil
+	}
+	stops := make([]TripStop, 0, len(trip.Stops))
+	for i, stop := range trip.Stops {
+		stops = append(stops, TripStop{
+			Code:               strings.TrimSpace(stop.Code),
+			Order:              i + 1,
+			Status:             strings.TrimSpace(stop.Status),
+			ArrivalScheduled:   strings.TrimSpace(stop.ArrivalTime.Scheduled),
+			ArrivalComputed:    strings.TrimSpace(stop.ArrivalTime.Computed),
+			DepartureScheduled: strings.TrimSpace(stop.DepartureTime.Scheduled),
+			DepartureComputed:  strings.TrimSpace(stop.DepartureTime.Computed),
+		})
+	}
+	return Snapshot[[]TripStop]{
 		GeneratedAt: nowISO(),
 		SourceTime:  meta.TimeStamp,
 		Data:        stops,

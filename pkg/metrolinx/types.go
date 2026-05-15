@@ -49,6 +49,36 @@ type LineStop struct {
 	IsMajor bool   `json:"IsMajor"`
 }
 
+type ScheduledTrip struct {
+	Number      string              `json:"Number"`
+	Destination string              `json:"Destination"`
+	Longitude   *float64            `json:"Longitude"`
+	Latitude    *float64            `json:"Latitude"`
+	Status      string              `json:"Status"`
+	TimeStamp   string              `json:"TimeStamp"`
+	Stops       []ScheduledTripStop `json:"Stops"`
+}
+
+type ScheduledTripStop struct {
+	Code          string       `json:"Code"`
+	Status        string       `json:"Status"`
+	Remark        *string      `json:"Remark"`
+	ArrivalTime   ScheduleTime `json:"ArrivalTime"`
+	DepartureTime ScheduleTime `json:"DepartureTime"`
+	Track         TrackInfo    `json:"Track"`
+}
+
+type ScheduleTime struct {
+	Scheduled string `json:"Scheduled"`
+	Computed  string `json:"Computed"`
+	Status    string `json:"Status"`
+}
+
+type TrackInfo struct {
+	Scheduled string  `json:"Scheduled"`
+	Actual    *string `json:"Actual"`
+}
+
 type AlertMessage struct {
 	Code           string    `json:"Code"`
 	ParentCode     *string   `json:"ParentCode"`

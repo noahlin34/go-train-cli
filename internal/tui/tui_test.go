@@ -33,6 +33,93 @@ func TestRenderFullTrackUsesOrderedStops(t *testing.T) {
 	}
 }
 
+func TestRenderFullTrackInfersSegmentForRailwayTelemetryCodes(t *testing.T) {
+	track := renderTrack(transit.TrainPosition{
+		Line:         "ST",
+		Direction:    "N",
+		PreviousStop: "DA",
+		NextStop:     "SCAJ",
+		InMotion:     true,
+	}, []transit.LineStop{
+		{Code: "UN", Order: 1},
+		{Code: "KE", Order: 2},
+		{Code: "AG", Order: 3},
+	}, true)
+
+	if !strings.Contains(track, "UN━━●━━KE") {
+		t.Fatalf("expected dot between public stops UN and KE, got %q", track)
+	}
+}
+
+func TestRenderFullTrackAddsMissingTripEndpoint(t *testing.T) {
+	track := renderTrack(transit.TrainPosition{
+		Line:         "LW",
+		Direction:    "W",
+		PreviousStop: "BAYV",
+		NextStop:     "HAMJ",
+		LastStop:     "WR",
+		InMotion:     true,
+	}, []transit.LineStop{
+		{Code: "BU", Order: 10},
+		{Code: "AL", Order: 11},
+	}, true)
+
+	if !strings.Contains(track, "AL━━●━━WR") {
+		t.Fatalf("expected dot between Aldershot and West Harbour, got %q", track)
+	}
+}
+
+func TestRenderTripTrackUsesTripScheduleWhenTelemetryIsOffMap(t *testing.T) {
+	now := time.Date(2026, 5, 14, 22, 19, 0, 0, time.Local)
+	track := renderTripTrack(transit.TrainPosition{
+		Line:         "ST",
+		Direction:    "N",
+		PreviousStop: "DA",
+		NextStop:     "SCAJ",
+		InMotion:     true,
+	}, []transit.TripStop{
+		{Code: "UN", Order: 1, DepartureComputed: "22:00"},
+		{Code: "KE", Order: 2, ArrivalComputed: "22:18", DepartureComputed: "22:18"},
+		{Code: "AG", Order: 3, ArrivalComputed: "22:28"},
+		{Code: "MK", Order: 4, ArrivalComputed: "22:34"},
+	}, true, now)
+
+	if !strings.Contains(track, "KE━━●━━AG") {
+		t.Fatalf("expected dot between public stops KE and AG, got %q", track)
+	}
+}
+
+func TestRenderTripTrackIncludesVariantEndpoint(t *testing.T) {
+	now := time.Date(2026, 5, 14, 22, 45, 0, 0, time.Local)
+	track := renderTripTrack(transit.TrainPosition{
+		Line:         "LW",
+		Direction:    "W",
+		PreviousStop: "BAYV",
+		NextStop:     "HAMJ",
+		InMotion:     true,
+	}, []transit.TripStop{
+		{Code: "BU", Order: 1, DepartureComputed: "22:20"},
+		{Code: "AL", Order: 2, DepartureComputed: "22:40"},
+		{Code: "WR", Order: 3, ArrivalComputed: "22:50"},
+	}, true, now)
+
+	if !strings.Contains(track, "AL━━●━━WR") {
+		t.Fatalf("expected dot between actual trip stops AL and WR, got %q", track)
+	}
+}
+
+func TestTripSegmentByTimeHandlesOvernightTrips(t *testing.T) {
+	now := time.Date(2026, 5, 15, 0, 2, 0, 0, time.Local)
+	left, right, ok := tripSegmentByTime([]transit.TripStop{
+		{Code: "A", Order: 1, DepartureComputed: "23:58"},
+		{Code: "B", Order: 2, ArrivalComputed: "00:05"},
+	}, now)
+
+	if !ok || left != "A" || right != "B" {
+		t.Fatalf("expected overnight segment A-B, got %q-%q ok=%v", left, right, ok)
+	}
+}
+
 func TestViewSplitsHeaderAndScrollableBody(t *testing.T) {
 	m := model{
 		line:    "LW",
@@ -61,16 +148,19 @@ func TestViewSplitsHeaderAndScrollableBody(t *testing.T) {
 	}
 }
 
-func TestUpdatedAgoUsesCompactRelativeTime(t *testing.T) {
+func TestRefreshedAgoUsesSnapshotReceiveTime(t *testing.T) {
 	now := time.Date(2026, 5, 14, 19, 45, 30, 0, time.Local)
 
-	if got := updatedAgo("2026-05-14 19:45:18", now); got != "12s ago" {
+	if got := refreshedAgo(now.Add(-12*time.Second), now); got != "12s ago" {
 		t.Fatalf("expected seconds, got %q", got)
 	}
-	if got := updatedAgo("2026-05-14 19:42:00", now); got != "3m ago" {
+	if got := refreshedAgo(now.Add(-3*time.Minute), now); got != "3m ago" {
 		t.Fatalf("expected minutes, got %q", got)
 	}
-	if got := updatedAgo("not a timestamp", now); got != "just now" {
-		t.Fatalf("expected fallback, got %q", got)
+	if got := refreshedAgo(now.Add(time.Second), now); got != "0s ago" {
+		t.Fatalf("expected future clock skew to clamp, got %q", got)
+	}
+	if got := refreshedAgo(time.Time{}, now); got != "just now" {
+		t.Fatalf("expected zero-time fallback, got %q", got)
 	}
 }

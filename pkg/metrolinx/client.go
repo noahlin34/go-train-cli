@@ -150,3 +150,23 @@ func (c *Client) LineStops(ctx context.Context, date, lineCode, direction string
 	}
 	return stops, resp.Metadata, requireOK(resp.Metadata)
 }
+
+func (c *Client) ScheduledTrip(ctx context.Context, date, tripNumber string) (*ScheduledTrip, Metadata, error) {
+	var resp struct {
+		Metadata Metadata        `json:"Metadata"`
+		Trips    json.RawMessage `json:"Trips"`
+	}
+	path := fmt.Sprintf("api/V1/Schedule/Trip/%s/%s", url.PathEscape(date), url.PathEscape(tripNumber))
+	err := c.Get(ctx, path, &resp)
+	if err != nil {
+		return nil, resp.Metadata, err
+	}
+	trips, err := oneOrMany[ScheduledTrip](resp.Trips)
+	if err != nil {
+		return nil, resp.Metadata, err
+	}
+	if len(trips) == 0 {
+		return nil, resp.Metadata, requireOK(resp.Metadata)
+	}
+	return &trips[0], resp.Metadata, requireOK(resp.Metadata)
+}
