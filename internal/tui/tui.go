@@ -402,16 +402,28 @@ func trainTimingStatus(train transit.TrainPosition, stops []transit.TripStop) st
 	}
 	if train.AtStation != nil && strings.TrimSpace(*train.AtStation) != "" {
 		stop, ok := tripStopByCode(stops, *train.AtStation)
-		if !ok || strings.TrimSpace(stop.DepartureComputed) == "" {
+		if !ok {
 			return ""
 		}
-		return fmt.Sprintf("departs %s at %s", stop.Code, strings.TrimSpace(stop.DepartureComputed))
-	}
-	stop, ok := tripStopByCode(stops, train.NextStop)
-	if !ok || strings.TrimSpace(stop.ArrivalComputed) == "" {
+		if computed := strings.TrimSpace(stop.DepartureComputed); computed != "" {
+			return fmt.Sprintf("departs %s at %s", stop.Code, computed)
+		}
+		if scheduled := strings.TrimSpace(stop.DepartureScheduled); scheduled != "" {
+			return fmt.Sprintf("scheduled to depart %s at %s", stop.Code, scheduled)
+		}
 		return ""
 	}
-	return fmt.Sprintf("arrives %s at %s", stop.Code, strings.TrimSpace(stop.ArrivalComputed))
+	stop, ok := tripStopByCode(stops, train.NextStop)
+	if !ok {
+		return ""
+	}
+	if computed := strings.TrimSpace(stop.ArrivalComputed); computed != "" {
+		return fmt.Sprintf("arrives %s at %s", stop.Code, computed)
+	}
+	if scheduled := strings.TrimSpace(stop.ArrivalScheduled); scheduled != "" {
+		return fmt.Sprintf("scheduled to arrive %s at %s", stop.Code, scheduled)
+	}
+	return ""
 }
 
 func tripStopByCode(stops []transit.TripStop, code string) (transit.TripStop, bool) {

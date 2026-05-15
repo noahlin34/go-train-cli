@@ -216,14 +216,27 @@ func TestTrainTimingStatusShowsCurrentStationDeparture(t *testing.T) {
 	}
 }
 
-func TestTrainTimingStatusRequiresComputedEstimate(t *testing.T) {
+func TestTrainTimingStatusFallsBackToScheduledArrival(t *testing.T) {
 	got := trainTimingStatus(transit.TrainPosition{
 		NextStop: "EX",
 	}, []transit.TripStop{
 		{Code: "EX", Order: 2, ArrivalScheduled: "12:18"},
 	})
 
-	if got != "" {
-		t.Fatalf("expected no status without API computed estimate, got %q", got)
+	if got != "scheduled to arrive EX at 12:18" {
+		t.Fatalf("expected scheduled arrival fallback, got %q", got)
+	}
+}
+
+func TestTrainTimingStatusFallsBackToScheduledDeparture(t *testing.T) {
+	at := "UN"
+	got := trainTimingStatus(transit.TrainPosition{
+		AtStation: &at,
+	}, []transit.TripStop{
+		{Code: "UN", Order: 1, DepartureScheduled: "12:10"},
+	})
+
+	if got != "scheduled to depart UN at 12:10" {
+		t.Fatalf("expected scheduled departure fallback, got %q", got)
 	}
 }
