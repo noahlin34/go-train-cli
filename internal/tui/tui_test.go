@@ -3,6 +3,7 @@ package tui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/noah/go-train-cli/pkg/transit"
 )
@@ -57,5 +58,19 @@ func TestViewSplitsHeaderAndScrollableBody(t *testing.T) {
 	body := m.bodyView()
 	if !strings.Contains(body, "Active alerts") || !strings.Contains(body, "Live trains") {
 		t.Fatalf("expected body to include alerts and trains: %q", body)
+	}
+}
+
+func TestUpdatedAgoUsesCompactRelativeTime(t *testing.T) {
+	now := time.Date(2026, 5, 14, 19, 45, 30, 0, time.Local)
+
+	if got := updatedAgo("2026-05-14 19:45:18", now); got != "12s ago" {
+		t.Fatalf("expected seconds, got %q", got)
+	}
+	if got := updatedAgo("2026-05-14 19:42:00", now); got != "3m ago" {
+		t.Fatalf("expected minutes, got %q", got)
+	}
+	if got := updatedAgo("not a timestamp", now); got != "just now" {
+		t.Fatalf("expected fallback, got %q", got)
 	}
 }

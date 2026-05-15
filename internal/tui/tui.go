@@ -198,7 +198,7 @@ func (m model) bodyView() string {
 	for _, train := range m.trains {
 		fmt.Fprintf(&b, "%s  %s  %s  %s\n", titleStyle.Render(train.Line), train.TripNumber, train.Display, delayText(train.DelaySeconds))
 		fmt.Fprintf(&b, "%s\n", renderTrack(train, m.topology[topologyKey(train.Line, train.Direction)], m.blink))
-		fmt.Fprintf(&b, "%s\n\n", mutedStyle.Render(train.PositionLabel+" | updated "+train.LastUpdated))
+		fmt.Fprintf(&b, "%s\n\n", mutedStyle.Render(train.PositionLabel+" | updated "+updatedAgo(train.LastUpdated, time.Now())))
 	}
 	return b.String()
 }
@@ -358,4 +358,22 @@ func alertMeta(alert transit.Alert) string {
 
 func topologyKey(line, direction string) string {
 	return strings.ToUpper(strings.TrimSpace(line)) + ":" + strings.ToUpper(strings.TrimSpace(direction))
+}
+
+func updatedAgo(value string, now time.Time) string {
+	updatedAt, err := time.ParseInLocation("2006-01-02 15:04:05", strings.TrimSpace(value), now.Location())
+	if err != nil {
+		return "just now"
+	}
+	age := now.Sub(updatedAt)
+	if age < 0 {
+		age = 0
+	}
+	if age < time.Minute {
+		return fmt.Sprintf("%ds ago", int(age.Seconds()))
+	}
+	if age < time.Hour {
+		return fmt.Sprintf("%dm ago", int(age.Minutes()))
+	}
+	return fmt.Sprintf("%dh ago", int(age.Hours()))
 }
