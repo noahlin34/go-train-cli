@@ -164,3 +164,17 @@ func TestRefreshedAgoUsesSnapshotReceiveTime(t *testing.T) {
 		t.Fatalf("expected zero-time fallback, got %q", got)
 	}
 }
+
+func TestDelayTextShowsDelayedTrainsInRed(t *testing.T) {
+	got := delayText(-19 * 60)
+
+	if !strings.Contains(got, "delayed by 19 minutes") {
+		t.Fatalf("expected human delayed label, got %q", got)
+	}
+}
+
+func TestDelayTextPluralizesOneMinute(t *testing.T) {
+	if got := delayText(-30); !strings.Contains(got, "delayed by 1 minute") {
+		t.Fatalf("expected singular delayed label, got %q", got)
+	}
+}

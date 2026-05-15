@@ -297,15 +297,24 @@ func formatDelay(seconds int) string {
 	if seconds == 0 {
 		return "on time"
 	}
+	minutes := delayMinutes(seconds)
+	unit := "minutes"
+	if minutes == 1 {
+		unit = "minute"
+	}
+	if seconds < 0 {
+		return "delayed by " + strconv.Itoa(minutes) + " " + unit
+	}
+	return "early by " + strconv.Itoa(minutes) + " " + unit
+}
+
+func delayMinutes(seconds int) int {
+	if seconds < 0 {
+		seconds = -seconds
+	}
 	minutes := seconds / 60
-	if seconds > 0 && minutes == 0 {
-		minutes = 1
+	if seconds%60 != 0 {
+		minutes++
 	}
-	if seconds < 0 && minutes == 0 {
-		minutes = -1
-	}
-	if minutes > 0 {
-		return "+" + strconv.Itoa(minutes) + "m"
-	}
-	return strconv.Itoa(minutes) + "m"
+	return minutes
 }

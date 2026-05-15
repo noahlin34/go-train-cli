@@ -516,13 +516,33 @@ func stopIndex(stops []transit.LineStop, code string) int {
 }
 
 func delayText(seconds int) string {
-	if seconds > 60 {
-		return alertStyle.Render(fmt.Sprintf("+%dm", seconds/60))
+	switch {
+	case seconds < 0:
+		return alertStyle.Render(delayPhrase("delayed by", delayMinutes(seconds)))
+	case seconds > 0:
+		return mutedStyle.Render(delayPhrase("early by", delayMinutes(seconds)))
+	default:
+		return lineStyle.Render("on time")
 	}
-	if seconds < -60 {
-		return mutedStyle.Render(fmt.Sprintf("%dm", seconds/60))
+}
+
+func delayPhrase(prefix string, minutes int) string {
+	unit := "minutes"
+	if minutes == 1 {
+		unit = "minute"
 	}
-	return lineStyle.Render("on time")
+	return fmt.Sprintf("%s %d %s", prefix, minutes, unit)
+}
+
+func delayMinutes(seconds int) int {
+	if seconds < 0 {
+		seconds = -seconds
+	}
+	minutes := seconds / 60
+	if seconds%60 != 0 {
+		minutes++
+	}
+	return minutes
 }
 
 func alertMeta(alert transit.Alert) string {
