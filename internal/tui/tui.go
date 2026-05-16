@@ -143,7 +143,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.blink = !m.blink
 		m.viewport.SetContent(m.bodyView())
 		cmds := []tea.Cmd{tick()}
-		if time.Since(m.updatedAt) >= m.refresh {
+		if !m.loading && time.Since(m.updatedAt) >= m.refresh {
 			m.loading = true
 			cmds = append(cmds, m.fetch())
 		}
