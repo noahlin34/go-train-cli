@@ -20,6 +20,7 @@ import (
 type options struct {
 	apiKey string
 	json   bool
+	about  bool
 }
 
 func NewRootCommand() *cobra.Command {
@@ -28,9 +29,17 @@ func NewRootCommand() *cobra.Command {
 		Use:   "gotrain",
 		Short: "GO Transit command line utility",
 		Long:  "gotrain fetches GO Transit live departures, train positions, alerts, and station data from the Metrolinx Open Data API.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if opts.about {
+				fmt.Fprintln(cmd.OutOrStdout(), "Made by noah lin. All rights reserved")
+				return nil
+			}
+			return cmd.Help()
+		},
 	}
 	root.PersistentFlags().StringVar(&opts.apiKey, "api-key", "", "Metrolinx GO API key (defaults to GO_API_KEY)")
 	root.PersistentFlags().BoolVar(&opts.json, "json", false, "emit deterministic JSON for scripts and agents")
+	root.PersistentFlags().BoolVar(&opts.about, "about", false, "show author and rights information")
 
 	root.AddCommand(stationsCommand(opts))
 	root.AddCommand(departuresCommand(opts))
