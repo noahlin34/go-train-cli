@@ -31,12 +31,19 @@ go run ./cmd/gotrain alerts --line LW
 go run ./cmd/gotrain status --line LW
 go run ./cmd/gotrain tui --line LW
 go run ./cmd/gotrain serve --addr 127.0.0.1:8787
+go run ./cmd/gotrain --version
 ```
 
 Machine-readable commands use stable JSON field names and explicit timestamps:
 
 ```sh
 go run ./cmd/gotrain trains --line LW --json | jq '.data[0]'
+```
+
+Release builds can stamp the reported version:
+
+```sh
+go build -ldflags "-X github.com/noah/go-train-cli/internal/cli.Version=v0.1.0" -o gotrain ./cmd/gotrain
 ```
 
 The default human output is compact table text suitable for a terminal. The `departures`

@@ -23,12 +23,15 @@ type options struct {
 	about  bool
 }
 
+var Version = "dev"
+
 func NewRootCommand() *cobra.Command {
 	opts := &options{}
 	root := &cobra.Command{
-		Use:   "gotrain",
-		Short: "GO Transit command line utility",
-		Long:  "gotrain fetches GO Transit live departures, train positions, alerts, and station data from the Metrolinx Open Data API.",
+		Use:     "gotrain",
+		Short:   "GO Transit command line utility",
+		Long:    "gotrain fetches GO Transit live departures, train positions, alerts, and station data from the Metrolinx Open Data API.",
+		Version: Version,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.about {
 				fmt.Fprintln(cmd.OutOrStdout(), "Made by noah lin. All rights reserved")
@@ -37,6 +40,7 @@ func NewRootCommand() *cobra.Command {
 			return cmd.Help()
 		},
 	}
+	root.SetVersionTemplate("gotrain {{.Version}}\n")
 	root.PersistentFlags().StringVar(&opts.apiKey, "api-key", "", "Metrolinx GO API key (defaults to GO_API_KEY)")
 	root.PersistentFlags().BoolVar(&opts.json, "json", false, "emit deterministic JSON for scripts and agents")
 	root.PersistentFlags().BoolVar(&opts.about, "about", false, "show author and rights information")

@@ -21,6 +21,27 @@ func TestRootAboutFlagPrintsRightsNotice(t *testing.T) {
 	}
 }
 
+func TestRootVersionFlagPrintsVersion(t *testing.T) {
+	previous := Version
+	Version = "1.2.3-test"
+	t.Cleanup(func() {
+		Version = previous
+	})
+
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"--version"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("expected version flag to execute, got %v", err)
+	}
+	if got := strings.TrimSpace(out.String()); got != "gotrain 1.2.3-test" {
+		t.Fatalf("expected version text, got %q", got)
+	}
+}
+
 func TestFormatDelayShowsDelayedPhrase(t *testing.T) {
 	if got := formatDelay(-19 * 60); got != "delayed by 19 minutes" {
 		t.Fatalf("expected delayed phrase, got %q", got)
